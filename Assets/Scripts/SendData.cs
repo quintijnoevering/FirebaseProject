@@ -4,11 +4,20 @@ using UnityEngine;
 
 public class SendData : MonoBehaviour
 {
-    public void ButtonPressed(GameObject pressedButton)
+    public void ButtonPressed()
     {
-        string path = DatabaseManager.ConstructDatabasePath();
+        string path = DatabaseManager.ConstructDatabasePath("iets");
 
-        DatabaseManager.PostJSON(path, 1.ToString(), pressedButton.name, "OnPostSuccesful", "OnPostFailed");
+        DatabaseManager.GetAndAdd(path, gameObject.name, "OnPostSuccesfull", "OnPostFailed");
+    }
 
+    public void OnPostSuccesfull(string output)
+    {
+        Debug.Log(output);
+    }
+
+    public void OnPostFailed(string output)
+    {
+        Debug.Log(output);
     }
 }

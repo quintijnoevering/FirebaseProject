@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "routes": [
+    { "src": "/Build/(.*).wasm", "dest": "/Build/$1.wasm", "headers": { "content-type": "application/wasm" } },
+    { "src": "/Build/(.*).unityweb", "dest": "/Build/$1.unityweb", "headers": { "content-type": "application/octet-stream" } },
+    { "src": "/Build/(.*).js", "dest": "/Build/$1.js", "headers": { "content-type": "text/javascript" } },
+    { "src": "/Build/(.*).data", "dest": "/Build/$1.data", "headers": { "content-type": "application/octet-stream" } },
+    { "src": "/TemplateData/(.*).css", "dest": "/TemplateData/$1.css", "headers": { "content-type": "text/css" } },
+    { "src": "/TemplateData/(.*).png", "dest": "/TemplateData/$1.png", "headers": { "content-type": "image/png" } },
+    { "src": "/TemplateData/(.*).jpg", "dest": "/TemplateData/$1.jpg", "headers": { "content-type": "image/jpeg" } },
+    { "src": "/ServiceWorker.js", "dest": "/ServiceWorker.js", "headers": { "content-type": "text/javascript" } },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
