@@ -4,11 +4,23 @@ using UnityEngine;
 
 public class SendData : MonoBehaviour
 {
-    public void ButtonPressed()
-    {
-        string path = DatabaseManager.ConstructDatabasePath("iets");
+    [SerializeField]
+    private string playerId = "";
 
-        DatabaseManager.GetAndAdd(path, gameObject.name, "OnPostSuccesfull", "OnPostFailed");
+    public void ButtonPressed(GameObject button)
+    {
+        string path = "";
+        if (button != null)
+        {
+            path = DatabaseManager.ConstructDatabasePath("buttons", button.name);
+            DatabaseManager.GetAndAdd(path, gameObject.name, "OnPostSuccesfull", "OnPostFailed");
+        }
+
+        if (playerId != "")
+        {
+            path = DatabaseManager.ConstructDatabasePath(playerId, "clickedButtons", button.name);
+            DatabaseManager.GetAndAdd(path, gameObject.name, "OnPostSuccesfull", "OnPostFailed");
+        }
     }
 
     public void OnPostSuccesfull(string output)
