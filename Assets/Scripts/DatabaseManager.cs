@@ -29,17 +29,6 @@ public class DatabaseManager : MonoBehaviour
     public static extern void GetJSON(string path, string objectName, string callback, string fallback);
 
     /// <summary>
-    /// Deletes JSON in a specified path
-    /// </summary>
-    /// <param name="path"> Database path </param>
-    /// <param name="objectName"> Name of the gameobject to call the callback/fallback of </param>
-    /// <param name="amount"> The amount added to the current thingy</param>
-    /// <param name="callback"> Name of the method to call when the operation was successful. Method must have signature: void Method(string output) </param>
-    /// <param name="fallback"> Name of the method to call when the operation was unsuccessful. Method must have signature: void Method(string output). Will return a serialized FirebaseError object </param>
-    [DllImport("__Internal")]
-    public static extern void ModifyNumberWithTransaction(string path, string objectName, string callback, string fallback);
-
-    /// <summary>
     /// Posts JSON to a specified path
     /// </summary>
     /// <param name="path"> Database path </param>
