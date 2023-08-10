@@ -11,10 +11,6 @@ using JetBrains.Annotations;
 
 public class SendData : MonoBehaviour
 {
-    [Header("Set specific user for the buttons")]
-    [SerializeField]
-    private string playerId = "";
-
     [Header("Create user input fields")]
     [SerializeField]
     private TMP_InputField createUsername;
@@ -33,18 +29,34 @@ public class SendData : MonoBehaviour
     [SerializeField]
     private TMP_InputField resetPasswordUsername;
 
+    private UserContainer userWrap;
+    private UserContainer createdUser;
+
     private void Start()
     {
+        // Make sure all the password field have ContentType set on password to hide the password
         createPassword.contentType = TMP_InputField.ContentType.Password;
         loginPassword.contentType = TMP_InputField.ContentType.Password;
     }
 
+    #region Firebase Classes
+    /// <summary>
+    /// Container to get the user JSON data
+    /// </summary>
     [System.Serializable]
     public class UserContainer
     {
         public User user;
     }
 
+    /// <summary>
+    /// User preset from Firbase with values as:
+    /// UID
+    /// Email
+    /// Display name
+    /// 
+    /// Update this class if you want other data from the user
+    /// </summary>
     [System.Serializable]
     public class User
     {
@@ -54,15 +66,18 @@ public class SendData : MonoBehaviour
         // You can add other properties if needed
     }
 
-    public class EventComponent
+    /// <summary>
+    /// User event preset
+    /// </summary>
+    public class UserEventComponent
     {
         public string name;
-        public string date;
+        public string dateEventCompleted;
+        public string timeEventCompleted;
     }
+    #endregion
 
-    public UserContainer userWrap;
-    public UserContainer createdUser;
-
+    #region Structure functions
     /// <summary>
     /// Regular expression, which is used to validate an E-Mail address.
     /// </summary>
@@ -87,10 +102,39 @@ public class SendData : MonoBehaviour
     /// <summary>
     /// Returns a JSON format of the database in the OnPostSuccesfull
     /// </summary>
-    public void GetDatabaseData()
-    {
+    public void GetDatabaseData() {
         string path = DatabaseManager.ConstructDatabasePath();
         DatabaseManager.GetJSON(path, gameObject.name, "OnPostSuccesfull", "OnPostFailed");
+    }
+    #endregion
+
+    #region Firebase functions
+    /// <summary>
+    /// Send to event to the realtime database in Firebase
+    /// Set event values to the given eventName and current datetime
+    /// </summary>
+    /// <param name="eventName">Set the event name</param>
+    public void SendEvent(string eventName)
+    {
+        string path;
+        if (!string.IsNullOrEmpty(eventName))
+        {
+            DateTime dt = DateTime.Now;
+            UserEventComponent userEventComponent = new UserEventComponent() {
+                name = eventName,
+                dateEventCompleted = dt.ToString("dd-MM-yyyy"),
+                timeEventCompleted = dt.ToString("hh:mm:ss")
+            };
+
+            path = DatabaseManager.ConstructDatabasePath("Events", userEventComponent.name);
+            DatabaseManager.GetAndAdd(path, gameObject.name, "OnPostSuccesfull", "OnPostFailed");
+
+            if (!string.IsNullOrEmpty(userWrap.user.uid))
+            {
+                path = DatabaseManager.ConstructDatabasePath("All users", userWrap.user.uid, "Events");
+                DatabaseManager.PushJSON(path, JsonUtility.ToJson(userEventComponent), gameObject.name, "OnPostSuccesfull", "OnPostFailed");
+            }
+        }
     }
 
     /// <summary>
@@ -99,56 +143,27 @@ public class SendData : MonoBehaviour
     /// The results are visable in the Realtime Database of Firebase.
     /// </summary>
     /// <param name="button">The clicked button</param>
-    public void ButtonPressed(GameObject button)
-    {
+    public void ButtonPressed(GameObject button) {
         string path;
-        if (button != null)
-        {
+        if (button != null) {
             path = DatabaseManager.ConstructDatabasePath("Events", button.name);
             DatabaseManager.GetAndAdd(path, gameObject.name, "OnPostSuccesfull", "OnPostFailed");
         }
 
-        if (!string.IsNullOrEmpty(userWrap.user.uid))
-        {
+        if (!string.IsNullOrEmpty(userWrap.user.uid)) {
             path = DatabaseManager.ConstructDatabasePath("All users", userWrap.user.uid, "Events", button.name);
             DatabaseManager.GetAndAdd(path, gameObject.name, "OnPostSuccesfull", "OnPostFailed");
         }
     }
 
     /// <summary>
-    /// 
-    /// </summary>
-    public void SendEvent(string eventName)
-    {
-        string path;
-        if (!string.IsNullOrEmpty(eventName))
-        {
-            DateTime dt = DateTime.Now;
-            EventComponent eventComponent = new EventComponent()
-            {
-                name = eventName,
-                date = dt.ToString("yyyy-MM-dd")
-            };
-
-            path = DatabaseManager.ConstructDatabasePath("Events");
-            DatabaseManager.PostJSON(path, JsonUtility.ToJson(eventComponent), gameObject.name, "OnPostSuccesfull", "OnPostFailed");
-
-            if (!string.IsNullOrEmpty(userWrap.user.uid))
-            {
-                path = DatabaseManager.ConstructDatabasePath("All users", userWrap.user.uid, "Events");
-                DatabaseManager.PostJSON(path, JsonUtility.ToJson(eventComponent), gameObject.name, "OnPostSuccesfull", "OnPostFailed");
-            }
-        }
-    }
-
-    /// <summary>
-    /// 
+    /// Add the created user to the Realtime database
     /// </summary>
     public void AddUserToDataSet()
     {
         if (string.IsNullOrEmpty(createdUser.user.uid))
         {
-            Debug.Log("No user is logged in");
+            Debug.Log("User failed to create");
             return;
         }
         string path = DatabaseManager.ConstructDatabasePath( "All users", createdUser.user.uid);
@@ -156,7 +171,10 @@ public class SendData : MonoBehaviour
     }
 
     /// <summary>
-    /// 
+    /// This function does the following steps in the Jslib
+    /// 1. Add user to the Firebase Authentication with the email and password
+    /// 2. It updates the user with the given displayName
+    /// 3. Send a verification email to the given email
     /// </summary>
     public void CreateUser()
     {
@@ -176,7 +194,7 @@ public class SendData : MonoBehaviour
     }
 
     /// <summary>
-    /// 
+    /// Login the user
     /// </summary>
     public void LoginUser()
     {
@@ -196,57 +214,64 @@ public class SendData : MonoBehaviour
     }
 
     /// <summary>
-    /// 
+    /// Send password reset link to the given email
     /// </summary>
-    /// <param name="userData"></param>
-    public void SetLoggedInUser(string userData)
-    {
-        Debug.Log("Userdata: " + userData);
-        userWrap = JsonUtility.FromJson<UserContainer>(userData);
-
-        Debug.Log("User ID: " + userWrap.user.uid);
-        Debug.Log("Email: " + userWrap.user.email);
-        Debug.Log("Display Name: " + userWrap.user.displayName);
-
-        playerId = userWrap.user.uid;
-    }
-
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="userData"></param>
-    public void SetCreatedUser(string userData)
-    {
-        Debug.Log("Userdata: " + userData);
-        createdUser = JsonUtility.FromJson<UserContainer>(userData);
-
-        Debug.Log("User ID: " + createdUser.user.uid);
-        Debug.Log("Email: " + createdUser.user.email);
-        Debug.Log("Display Name: " + createdUser.user.displayName);
-
-        AddUserToDataSet();
-    }
-
-    /// <summary>
-    /// 
-    /// </summary>
-    public void ResetPasswordWithEmail()
-    {
-        if (string.IsNullOrEmpty(resetPasswordUsername.text))
-        {
+    public void ResetPasswordWithEmail() {
+        if (string.IsNullOrEmpty(resetPasswordUsername.text)) {
             Debug.Log("No username or Password entered");
             return;
         }
         FirebaseAuth.SendPasswordResetEmail(resetPasswordUsername.text, gameObject.name, "OnPostSuccesfull", "OnPostFailed");
     }
+    #endregion
 
+    #region Set user classes
+    /// <summary>
+    /// Set the data of the user in the user class to use in your platform
+    /// </summary>
+    /// <param name="userData">userData returned by firebase after login</param>
+    public void SetLoggedInUser(string userData)
+    {
+        Debug.LogFormat("Data of the logged in user: {0}", userData);
+        userWrap = JsonUtility.FromJson<UserContainer>(userData);
+    }
+
+    /// <summary>
+    /// Set the created user's data in the user class to use in your platform
+    /// </summary>
+    /// <param name="userData"></param>
+    public void SetCreatedUser(string userData)
+    {
+        Debug.LogFormat("Data of the created user: {0}", userData);
+        createdUser = JsonUtility.FromJson<UserContainer>(userData);
+
+        AddUserToDataSet();
+    }
+    #endregion
+
+    #region Callbacks
+    /// <summary>
+    /// Display the returned log
+    /// </summary>
+    /// <param name="output">Firebase return</param>
     public void OnPostSuccesfull(string output)
     {
-        Debug.Log(output);
+        if (!string.IsNullOrEmpty(output)) 
+        {
+            Debug.LogFormat("Succes: {0}", output);
+        }
     }
 
-    public void OnPostFailed(string output)
+    /// <summary>
+    /// Display the returned error
+    /// </summary>
+    /// <param name="output">Firebase return</param>
+    public void OnPostFailed(string output) 
     {
-        Debug.Log(output);
+        if (!string.IsNullOrEmpty(output)) 
+        {
+            Debug.LogFormat("Error: {0}", output);
+        }
     }
+    #endregion
 }

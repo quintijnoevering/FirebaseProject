@@ -19,7 +19,7 @@ mergeInto(LibraryManager.library, {
                     }).then(function() {
 
                         window.sendEmailVerification(user).then(function() {
-                    window.unityInstance.SendMessage(parsedObjectName, parsedCallback, JSON.stringify(userCredential));
+                            window.unityInstance.SendMessage(parsedObjectName, parsedCallback, JSON.stringify(userCredential));
                         }).catch(function(error) {
                             window.unityInstance.SendMessage(parsedObjectName, parsedFallback, error.message);
                         });
@@ -73,7 +73,7 @@ mergeInto(LibraryManager.library, {
             window.firebaseSignInWithEmailAndPassword(window.auth, parsedEmail, parsedPassword)
                 .then(function(userCredential) {
                     // The user has been successfully signed in
-                    console.log("User: " + userCredential);
+                    console.log(userCredential);
                     window.unityInstance.SendMessage(parsedObjectName, parsedCallback, JSON.stringify(userCredential));
                 })
                 .catch(function(error) {
@@ -100,26 +100,5 @@ mergeInto(LibraryManager.library, {
             }
         });
 
-    },
-
-    // SendSignInLinkToEmail: function (objectName, onUserSignedIn, onUserSignedOut) {
-    //     var parsedObjectName = UTF8ToString(objectName);
-    //     var parsedOnUserSignedIn = UTF8ToString(onUserSignedIn);
-    //     var parsedOnUserSignedOut = UTF8ToString(onUserSignedOut);
-
-    //     window.firebaseSendSignInLinkToEmail(auth, email, window.actionCodeSettings)
-    //     .then(() => {
-    //         // The link was successfully sent. Inform the user.
-    //         // Save the email locally so you don't need to ask the user for it again
-    //         // if they open the link on the same device.
-    //         window.localStorage.setItem('emailForSignIn', email);
-    //         // ...
-    //     })
-    //     .catch((error) => {
-    //         const errorCode = error.code;
-    //         const errorMessage = error.message;
-    //         // ...
-    //     });
-
-    // }
+    }
 });
