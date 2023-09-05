@@ -39,6 +39,16 @@ namespace FirebaseWebGL.Scripts.FirebaseBridge
         public static extern void SendPasswordResetEmail(string email, string objectName, string callback, string fallback);
 
         /// <summary>
+        /// Change the displayname of the logged in user
+        /// </summary>
+        /// <param name="displayName"> The new user display name </param>
+        /// <param name="objectName"> Name of the gameobject to call the callback/fallback of </param>
+        /// <param name="callback"> Name of the method to call when the operation was successful. Method must have signature: void Method(string output) </param>
+        /// <param name="fallback"> Name of the method to call when the operation was unsuccessful. Method must have signature: void Method(string output). Will return a serialized FirebaseError object </param>
+        [DllImport("__Internal")]
+        public static extern void UpdateDisplayName(string displayName, string objectName, string callback, string fallback);
+
+        /// <summary>
         /// Signs in a user with Google
         /// </summary>
         /// <param name="objectName"> Name of the gameobject to call the callback/fallback of </param>

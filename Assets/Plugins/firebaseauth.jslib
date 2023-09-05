@@ -87,6 +87,33 @@ mergeInto(LibraryManager.library, {
         }
     },
 
+    UpdateDisplayName: function(newDisplayName, objectName, callback, fallback) {
+        var parsedNewDisplayName = UTF8ToString(newDisplayName);
+        var parsedObjectName = UTF8ToString(objectName);
+        var parsedCallback = UTF8ToString(callback);
+        var parsedFallback = UTF8ToString(fallback);
+
+        try {
+            const user = window.auth.currentUser;
+
+            if (user) {
+                window.updateProfile(user, {
+                    displayName: parsedNewDisplayName
+                }).then(function() {
+                    window.unityInstance.SendMessage(parsedObjectName, parsedCallback, "Success: Display name updated to " + parsedNewDisplayName);
+                }).catch(function(error) {
+                    var errorMessage = JSON.stringify(error, Object.getOwnPropertyNames(error));
+                    window.unityInstance.SendMessage(parsedObjectName, parsedFallback, errorMessage);
+                });
+            } else {
+                window.unityInstance.SendMessage(parsedObjectName, parsedFallback, "Error: No user is signed in.");
+            }
+        } catch (error) {
+            var errorMessage = JSON.stringify(error, Object.getOwnPropertyNames(error));
+            window.unityInstance.SendMessage(parsedObjectName, parsedFallback, errorMessage);
+        }
+    },
+
     OnAuthStateChanged: function (objectName, onUserSignedIn, onUserSignedOut) {
         var parsedObjectName = UTF8ToString(objectName);
         var parsedOnUserSignedIn = UTF8ToString(onUserSignedIn);

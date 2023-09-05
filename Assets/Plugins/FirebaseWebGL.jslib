@@ -5,7 +5,7 @@ mergeInto(LibraryManager.library, {
         var parsedCallback = UTF8ToString(callback);
         var parsedFallback = UTF8ToString(fallback);
 
-        try {     
+        try {
             const ref = window.firebaseRef(window.database, parsedPath);
             window.firebaseOnValue(ref, function(snapshot){
                 window.unityInstance.SendMessage(parsedObjectName, parsedCallback, JSON.stringify(snapshot.val()));
@@ -44,7 +44,7 @@ mergeInto(LibraryManager.library, {
     },
     PostJSON: function (path, value, objectName, callback, fallback) {
         var parsedPath = UTF8ToString(path);
-        var parsedValue = JSON.parse(UTF8ToString(value));
+        var parsedValue = UTF8ToString(value);
         var parsedObjectName = UTF8ToString(objectName);
         var parsedCallback = UTF8ToString(callback);
         var parsedFallback = UTF8ToString(fallback);
@@ -78,7 +78,7 @@ mergeInto(LibraryManager.library, {
     },
     UpdateJSON: function (path, value, objectName, callback, fallback) {
         var parsedPath = UTF8ToString(path);
-        var parsedValue = JSON.parse(UTF8ToString(value));
+        var parsedValue = UTF8ToString(value);
         var parsedObjectName = UTF8ToString(objectName);
         var parsedCallback = UTF8ToString(callback);
         var parsedFallback = UTF8ToString(fallback);

@@ -1,13 +1,11 @@
 ﻿using FirebaseWebGL.Scripts.FirebaseBridge;
-using FirebaseWebGL.Scripts.FirebaseAnalytics;
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using System.Text.RegularExpressions;
-using System.IO;
-using JetBrains.Annotations;
+using System.Linq;
+using System.Collections.Generic;
+using Newtonsoft.Json;
 
 public class SendData : MonoBehaviour
 {
@@ -24,21 +22,26 @@ public class SendData : MonoBehaviour
     private TMP_InputField loginUsername;
     [SerializeField]
     private TMP_InputField loginPassword;
+    [SerializeField]
+    private TMP_InputField loginAvatarID;
 
     [Header("Password reset input fields")]
     [SerializeField]
     private TMP_InputField resetPasswordUsername;
 
+    [Header("DisplayName reset input fields")]
+    [SerializeField]
+    private TMP_InputField resetDisplayName;
+
+    [Header("DataName input field")]
+    [SerializeField]
+    private TMP_InputField dataNameInputField;
+
     private UserContainer userWrap;
     private UserContainer createdUser;
 
-    private void Start()
-    {
-        // Make sure all the password field have ContentType set on password to hide the password
-        createPassword.contentType = TMP_InputField.ContentType.Password;
-        loginPassword.contentType = TMP_InputField.ContentType.Password;
-    }
-
+    public int avatarId;
+     
     #region Firebase Classes
     /// <summary>
     /// Container to get the user JSON data
@@ -54,7 +57,6 @@ public class SendData : MonoBehaviour
     /// UID
     /// Email
     /// Display name
-    /// 
     /// Update this class if you want other data from the user
     /// </summary>
     [System.Serializable]
@@ -63,6 +65,7 @@ public class SendData : MonoBehaviour
         public string uid;
         public string email;
         public string displayName;
+        public int avatarId;
         // You can add other properties if needed
     }
 
@@ -100,11 +103,11 @@ public class SendData : MonoBehaviour
     }
 
     /// <summary>
-    /// Returns a JSON format of the database in the OnPostSuccesfull
+    /// Returns a JSON format of the database in the GetAllDataOuput
     /// </summary>
     public void GetDatabaseData() {
         string path = DatabaseManager.ConstructDatabasePath();
-        DatabaseManager.GetJSON(path, gameObject.name, "OnPostSuccesfull", "OnPostFailed");
+        DatabaseManager.GetJSON(path, gameObject.name, "GetAllDataOuput", "OnPostFailed");
     }
     #endregion
 
@@ -127,32 +130,13 @@ public class SendData : MonoBehaviour
             };
 
             path = DatabaseManager.ConstructDatabasePath("Events", userEventComponent.name);
-            DatabaseManager.GetAndAdd(path, gameObject.name, "OnPostSuccesfull", "OnPostFailed");
+            DatabaseManager.GetAndAdd(path, gameObject.name, "EventOuput", "OnPostFailed");
 
             if (!string.IsNullOrEmpty(userWrap.user.uid))
             {
                 path = DatabaseManager.ConstructDatabasePath("All users", userWrap.user.uid, "Events");
-                DatabaseManager.PushJSON(path, JsonUtility.ToJson(userEventComponent), gameObject.name, "OnPostSuccesfull", "OnPostFailed");
+                DatabaseManager.PushJSON(path, JsonUtility.ToJson(userEventComponent), gameObject.name, "EventOuput", "OnPostFailed");
             }
-        }
-    }
-
-    /// <summary>
-    /// Will increase the number of total clicks of the given button.
-    /// Also increases the total clicks of the button from the given player.
-    /// The results are visable in the Realtime Database of Firebase.
-    /// </summary>
-    /// <param name="button">The clicked button</param>
-    public void ButtonPressed(GameObject button) {
-        string path;
-        if (button != null) {
-            path = DatabaseManager.ConstructDatabasePath("Events", button.name);
-            DatabaseManager.GetAndAdd(path, gameObject.name, "OnPostSuccesfull", "OnPostFailed");
-        }
-
-        if (!string.IsNullOrEmpty(userWrap.user.uid)) {
-            path = DatabaseManager.ConstructDatabasePath("All users", userWrap.user.uid, "Events", button.name);
-            DatabaseManager.GetAndAdd(path, gameObject.name, "OnPostSuccesfull", "OnPostFailed");
         }
     }
 
@@ -221,19 +205,107 @@ public class SendData : MonoBehaviour
             Debug.Log("No username or Password entered");
             return;
         }
-        FirebaseAuth.SendPasswordResetEmail(resetPasswordUsername.text, gameObject.name, "OnPostSuccesfull", "OnPostFailed");
+        FirebaseAuth.SendPasswordResetEmail(resetPasswordUsername.text, gameObject.name, "ResetPasswordOutput", "OnPostFailed");
+    }
+
+    /// <summary>
+    /// Send new displayname and update it in the Realtime Database
+    /// </summary>
+    public void ResetDisplayNameOfLoggedInPlayer() {
+        if (string.IsNullOrEmpty(resetDisplayName.text)) {
+            Debug.Log("No new username entered");
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(userWrap.user.uid))
+        {
+            FirebaseAuth.UpdateDisplayName(resetDisplayName.text, gameObject.name, "ResetDisplayNameOuput", "OnPostFailed");
+
+            string path = DatabaseManager.ConstructDatabasePath("All users", userWrap.user.uid, "displayName");
+            DatabaseManager.PostJSON(path, resetDisplayName.text, gameObject.name, "ResetDisplayNameOuput", "OnPostFailed");
+        }
+        else
+        {
+            Debug.Log("No player logged in");
+        }
+    }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="eventName"></param>
+    public void GetEvents(string eventName)
+    {
+        string path = DatabaseManager.ConstructDatabasePath("All users", userWrap.user.uid, "Events");
+        DatabaseManager.GetJSON(path, gameObject.name, "GetListOfEventsOutput", "OnPostFailed");
     }
     #endregion
 
     #region Set user classes
     /// <summary>
     /// Set the data of the user in the user class to use in your platform
+    /// If the loginAvatarID.text is empty or 0, you will get the avatarID that is set earlier from the Realtime Database
+    /// If the loginAvatarID.text is not empty or 0, the it will set the avatarid from the textbox loginAvatarID and return all user data
     /// </summary>
     /// <param name="userData">userData returned by firebase after login</param>
     public void SetLoggedInUser(string userData)
     {
         Debug.LogFormat("Data of the logged in user: {0}", userData);
         userWrap = JsonUtility.FromJson<UserContainer>(userData);
+
+        SetNewAvatarID(loginAvatarID.text);
+    }
+
+    /// <summary>
+    /// Set A new avatar ID for the logged in user
+    /// </summary>
+    public void SetNewAvatarID(string newAvatarID)
+    {
+        if (string.IsNullOrEmpty(newAvatarID))
+        {
+            newAvatarID = loginAvatarID.text;
+        }
+        // It returns the avatarId of the user at both options
+        if (!string.IsNullOrEmpty(newAvatarID))
+        {
+            string path = DatabaseManager.ConstructDatabasePath("All users", userWrap.user.uid, "avatarId");
+            DatabaseManager.PostJSON(path, newAvatarID, gameObject.name, "GetSpecificDataOutput", "OnPostFailed");
+        }
+        else
+        {
+            string path = DatabaseManager.ConstructDatabasePath("All users", userWrap.user.uid, "avatarId");
+            DatabaseManager.GetJSON(path, gameObject.name, "GetSpecificDataOutput", "OnPostFailed");
+        }
+    }
+
+    /// <summary>
+    /// Get specific values from the realtime database of the loggedIn user by the specific dataName
+    /// </summary>
+    /// <param name="dataName">The specific name of the Data you want to get. For example avatarId.</param>
+    public void GetSpecificData(string dataName)
+    {
+        if (string.IsNullOrEmpty(dataName))
+        {
+            if (string.IsNullOrEmpty(dataNameInputField.text))
+            {
+                Debug.Log("No Dataname set");
+                return;
+            }
+            else
+            {
+                dataName = dataNameInputField.text;
+            }
+        }
+
+        if (userWrap == null)
+        {
+            Debug.Log("No user is loggedIn");
+        }
+        else
+        {
+            string path = DatabaseManager.ConstructDatabasePath("All users", userWrap.user.uid, dataName);
+            DatabaseManager.GetJSON(path, gameObject.name, "GetSpecificDataOutput", "OnPostFailed");
+        }
     }
 
     /// <summary>
@@ -251,12 +323,155 @@ public class SendData : MonoBehaviour
 
     #region Callbacks
     /// <summary>
+    /// Get the specific data you called
+    /// </summary>
+    /// <param name="output">Firebase return</param>
+    public void GetSpecificDataOutput(string output)
+    {
+        try
+        {
+            Debug.Log("Specific data output: " + output);
+        }
+        catch (Exception exception)
+        {
+            Debug.Log(exception.Message);
+        }
+    }
+
+    /// <summary>
+    /// Get all data
+    /// </summary>
+    /// <param name="output">Firebase return</param>
+    public void GetAllDataOuput(string output)
+    {
+        try
+        {
+            // Set here the where you want the data to be
+            Debug.Log("All data output: " + output);
+        }
+        catch (Exception exception)
+        {
+            Debug.Log(exception.Message);
+        }
+    }
+
+    /// <summary>
+    /// Get all lsit of events
+    /// </summary>
+    /// <param name="output">Firebase return</param>
+    public void GetListOfEventsOutput(string output)
+    {
+        try
+        {
+            Debug.Log("All data output: " + output);
+            // Set here the where you want the data to be
+            List<UserEventComponent> eventsList = JsonConvert.DeserializeObject<List<UserEventComponent>>(output);
+
+            // Printing the events to the console for verification
+            foreach (var ev in eventsList)
+            {
+                Console.WriteLine($"Name: {ev.name}, Date Completed: {ev.dateEventCompleted}, Time Completed: {ev.timeEventCompleted}");
+            }
+        }
+        catch (Exception exception)
+        {
+            Debug.Log(exception.Message);
+        }
+    }
+
+    /// <summary>
+    /// Get the login output
+    /// </summary>
+    /// <param name="output">Firebase return</param>
+    public void LoginUserOuput(string output)
+    {
+        try
+        {
+            // Set here the where you want the data to be
+
+            Debug.Log("Login output: " + output);
+        }
+        catch (Exception exception)
+        {
+            Debug.Log(exception.Message);
+        }
+    }
+
+    /// <summary>
+    /// Get the create user output
+    /// </summary>
+    /// <param name="output">Firebase return</param>
+    public void CreateUserOutput(string output)
+    {
+        try
+        {
+            // Set here the where you want the data to be
+            Debug.Log("Login output: " + output);
+        }
+        catch (Exception exception)
+        {
+            Debug.Log(exception.Message);
+        }
+    }
+
+    /// <summary>
+    /// Get the reset password output
+    /// </summary>
+    /// <param name="output">Firebase return</param>
+    public void ResetPasswordOutput(string output)
+    {
+        try
+        {
+            // Set here the where you want the data to be
+            Debug.Log("Login output: " + output);
+        }
+        catch (Exception exception)
+        {
+            Debug.Log(exception.Message);
+        }
+    }
+
+    /// <summary>
+    /// Get the reset DisplayName output
+    /// </summary>
+    /// <param name="output">Firebase return</param>
+    public void ResetDisplayNameOuput(string output)
+    {
+        try
+        {
+            // Set here the where you want the data to be
+            Debug.Log("Login output: " + output);
+        }
+        catch (Exception exception)
+        {
+            Debug.Log(exception.Message);
+        }
+    }
+
+    /// <summary>
+    /// Get the event output
+    /// </summary>
+    /// <param name="output">Firebase return</param>
+    public void EventOuput(string output)
+    {
+        try
+        {
+            // Set here the where you want the data to be
+            Debug.Log("Login output: " + output);
+        }
+        catch (Exception exception)
+        {
+            Debug.Log(exception.Message);
+        }
+    }
+
+    /// <summary>
     /// Display the returned log
     /// </summary>
     /// <param name="output">Firebase return</param>
     public void OnPostSuccesfull(string output)
     {
-        if (!string.IsNullOrEmpty(output)) 
+        if (!string.IsNullOrEmpty(output))
         {
             Debug.LogFormat("Succes: {0}", output);
         }
@@ -266,9 +481,9 @@ public class SendData : MonoBehaviour
     /// Display the returned error
     /// </summary>
     /// <param name="output">Firebase return</param>
-    public void OnPostFailed(string output) 
+    public void OnPostFailed(string output)
     {
-        if (!string.IsNullOrEmpty(output)) 
+        if (!string.IsNullOrEmpty(output))
         {
             Debug.LogFormat("Error: {0}", output);
         }
